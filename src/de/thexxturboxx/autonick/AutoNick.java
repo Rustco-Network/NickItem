@@ -5,16 +5,18 @@ import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.Collection;
 
 import org.bukkit.BanList.Type;
 import org.bukkit.ChatColor;
 import org.bukkit.Material;
+import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.Action;
 import org.bukkit.event.player.PlayerInteractEvent;
-import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.inventory.ItemStack;
+import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.plugin.java.JavaPlugin;
 
 import com.huskehhh.mysql.mysql.MySQL;
@@ -54,6 +56,28 @@ public class AutoNick extends JavaPlugin implements Listener {
 				s.executeUpdate("CREATE TABLE IF NOT EXISTS " + TABLE + " (UUID VARCHAR(40) PRIMARY KEY, nicked BOOLEAN);");
 			}
 			getServer().getPluginManager().registerEvents(this, this);
+			getServer().getScheduler().scheduleSyncRepeatingTask(this, new Runnable() {
+				public void run() {
+					Collection<? extends Player> pc = getServer().getOnlinePlayers();
+					for(Player p : pc) {
+						if(p.hasPermission("nick.cmd.nick")) {
+							try {
+								Statement s = c.createStatement();
+								ResultSet res = s.executeQuery("SELECT * FROM " + TABLE + " WHERE UUID = '" + p.getName() + "';");
+								boolean nicked = false;
+								if(res.next()) {
+									nicked = res.getBoolean("nicked");
+								} else {
+									s.executeUpdate("INSERT INTO " + TABLE + " (UUID, nicked) VALUES ('" + p.getName() + "','0');");
+								}
+								p.getInventory().setItem(8, getAutoNickItem(nicked));
+							} catch (SQLException e1) {
+								e1.printStackTrace();
+							}
+						}
+					}
+				}
+			}, 0L, 1L);
 		} catch(Exception e) {
 			e.printStackTrace();
 		}
@@ -99,25 +123,6 @@ public class AutoNick extends JavaPlugin implements Listener {
 	}
 	
 	@EventHandler
-	public void giveItem(PlayerJoinEvent e) {
-		if(e.getPlayer().hasPermission("nick.cmd.nick")) {
-			try {
-				Statement s = c.createStatement();
-				ResultSet res = s.executeQuery("SELECT * FROM " + TABLE + " WHERE UUID = '" + e.getPlayer().getUniqueId().toString() + "';");
-				boolean nicked = false;
-				if(res.next()) {
-					nicked = res.getBoolean("nicked");
-				} else {
-					s.executeUpdate("INSERT INTO " + TABLE + " (UUID, nicked) VALUES ('" + e.getPlayer().getUniqueId().toString() + "','FALSE');");
-				}
-				e.getPlayer().getInventory().setItem(8, getAutoNickItem(nicked));
-			} catch (SQLException e1) {
-				e1.printStackTrace();
-			}
-		}
-	}
-	
-	@EventHandler
 	public void nickSwitch(PlayerInteractEvent e) {
 		if(e.getAction() == Action.RIGHT_CLICK_AIR || e.getAction() == Action.RIGHT_CLICK_BLOCK) {
 			Statement s;
@@ -125,10 +130,10 @@ public class AutoNick extends JavaPlugin implements Listener {
 				s = c.createStatement();
 				if(e.getPlayer().getItemInHand().isSimilar(getAutoNickItem(true))) {
 					e.getPlayer().getInventory().setItem(8, getAutoNickItem(false));
-					s.executeUpdate("UPDATE " + TABLE + " SET nicked = FALSE WHERE UUID = '" + e.getPlayer().getUniqueId().toString() + "'");
+					s.executeUpdate("UPDATE " + TABLE + " SET nicked = '0' WHERE UUID = '" + e.getPlayer().getName() + "'");
 				} else if(e.getPlayer().getItemInHand().isSimilar(getAutoNickItem(false))) {
 					e.getPlayer().getInventory().setItem(8, getAutoNickItem(true));
-					s.executeUpdate("UPDATE " + TABLE + " SET nicked = TRUE WHERE UUID = '" + e.getPlayer().getUniqueId().toString() + "'");
+					s.executeUpdate("UPDATE " + TABLE + " SET nicked = '1' WHERE UUID = '" + e.getPlayer().getName() + "'");
 				}
 			} catch (SQLException e1) {
 				e1.printStackTrace();
@@ -138,7 +143,9 @@ public class AutoNick extends JavaPlugin implements Listener {
 	
 	private ItemStack getAutoNickItem(boolean autoNick) {
 		ItemStack stack = new ItemStack(Material.NAME_TAG);
-		stack.getItemMeta().setDisplayName("§6AutoNick " + booleanToString(autoNick));
+		ItemMeta im = stack.getItemMeta();
+		im.setDisplayName("§6AutoNick " + booleanToString(autoNick));
+		stack.setItemMeta(im);
 		return stack;
 	}
 	
