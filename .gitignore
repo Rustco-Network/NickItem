@@ -1,0 +1,23 @@
+# Mobile Tools for Java (J2ME)
+.mtj.tmp/
+
+# Compiled Java Files #
+*.jar
+*.war
+*.ear
+*.zip
+*.class
+
+# VM Crashlogs #
+hs_err_pid*
+
+# Eclipse #
+/bin/
+/.settings/
+/.externalToolBuilders/
+.classpath
+.project
+build.xml
+
+# Others #
+*.db
