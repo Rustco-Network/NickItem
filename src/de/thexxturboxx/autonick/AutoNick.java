@@ -1,6 +1,7 @@
 package de.thexxturboxx.autonick;
 
 import java.io.File;
+import java.lang.reflect.Field;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -8,8 +9,11 @@ import java.sql.Statement;
 import java.util.Collection;
 
 import org.bukkit.BanList.Type;
+import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.Material;
+import org.bukkit.command.CommandMap;
+import org.bukkit.craftbukkit.v1_8_R3.CraftServer;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
@@ -25,6 +29,7 @@ public class AutoNick extends JavaPlugin implements Listener {
 	
 	public static AutoNick instance;
 	public static File path = new File("plugins/AutoNick"), dataPath;
+    private static CommandMap cmap;
 	MySQL MySQL = null;
     Connection c = null;
     public static final String TABLE = "AutoNick",
@@ -53,8 +58,20 @@ public class AutoNick extends JavaPlugin implements Listener {
 								  getConfig().getString("MySQL.password"));
 				c = MySQL.openConnection();
 				Statement s = c.createStatement();
-				s.executeUpdate("CREATE TABLE IF NOT EXISTS " + TABLE + " (UUID VARCHAR(40) PRIMARY KEY, nicked BOOLEAN);");
+				s.executeUpdate("CREATE TABLE IF NOT EXISTS " + TABLE + " (UUID VARCHAR(40) PRIMARY KEY, nicked INT, name VARCHAR(40));");
 			}
+			try {
+				if(Bukkit.getServer() instanceof CraftServer) {
+					final Field f = CraftServer.class.getDeclaredField("commandMap");
+					f.setAccessible(true);
+					cmap = (CommandMap) f.get(Bukkit.getServer());
+				}
+			} catch (Exception e) {
+				e.printStackTrace();
+			}
+			NickCmd cmd_nick = new NickCmd(this);
+			cmap.register("", cmd_nick);
+			cmd_nick.setExecutor(new NickCmdExec(this, c.createStatement()));
 			getServer().getPluginManager().registerEvents(this, this);
 			getServer().getScheduler().scheduleSyncRepeatingTask(this, new Runnable() {
 				public void run() {
@@ -64,13 +81,16 @@ public class AutoNick extends JavaPlugin implements Listener {
 							try {
 								Statement s = c.createStatement();
 								ResultSet res = s.executeQuery("SELECT * FROM " + TABLE + " WHERE UUID = '" + p.getName() + "';");
-								boolean nicked = false;
-								if(res.next()) {
-									nicked = res.getBoolean("nicked");
-								} else {
-									s.executeUpdate("INSERT INTO " + TABLE + " (UUID, nicked) VALUES ('" + p.getName() + "','0');");
-								}
-								p.getInventory().setItem(8, getAutoNickItem(nicked));
+								int nicked = 0;
+								if(res.next())
+									nicked = res.getInt("nicked");
+								else
+									s.executeUpdate("INSERT INTO " + TABLE + " (UUID, nicked, name) VALUES ('" + p.getName() + "','0','');");
+								if(nicked == 2) {
+									String name = res.getString("name");
+									p.getInventory().setItem(8, getAutoNickItem(name));
+								} else
+									p.getInventory().setItem(8, getAutoNickItem(nicked == 1));
 							} catch (SQLException e1) {
 								e1.printStackTrace();
 							}
@@ -127,14 +147,20 @@ public class AutoNick extends JavaPlugin implements Listener {
 		if(e.getAction() == Action.RIGHT_CLICK_AIR || e.getAction() == Action.RIGHT_CLICK_BLOCK) {
 			try {
 				Statement s = c.createStatement();
-				if(e.getPlayer().getItemInHand().isSimilar(getAutoNickItem(true))) {
+				ResultSet res = s.executeQuery("SELECT * FROM " + TABLE + " WHERE UUID = '" + e.getPlayer().getName() + "';");
+				String name = null;
+				if(res.next()) {
+					name = res.getString("name");
+				}
+				if(e.getPlayer().getItemInHand().isSimilar(getAutoNickItem(true)) ||
+						(name != null && e.getPlayer().getItemInHand().isSimilar(getAutoNickItem(name)))) {
 					e.getPlayer().getInventory().setItem(8, getAutoNickItem(false));
 					s.executeUpdate("UPDATE " + TABLE + " SET nicked = '0' WHERE UUID = '" + e.getPlayer().getName() + "'");
-					e.getPlayer().sendMessage("§7[§5NICK§7] §4AutoNick wurde §cdeaktiviert");
+					e.getPlayer().sendMessage(getPrefix() + "§4AutoNick wurde §cdeaktiviert");
 				} else if(e.getPlayer().getItemInHand().isSimilar(getAutoNickItem(false))) {
 					e.getPlayer().getInventory().setItem(8, getAutoNickItem(true));
 					s.executeUpdate("UPDATE " + TABLE + " SET nicked = '1' WHERE UUID = '" + e.getPlayer().getName() + "'");
-					e.getPlayer().sendMessage("§7[§5NICK§7] §4AutoNick wurde §aaktiviert");
+					e.getPlayer().sendMessage(getPrefix() + "§4AutoNick wurde §aaktiviert");
 				}
 			} catch (SQLException e1) {
 				e1.printStackTrace();
@@ -146,6 +172,14 @@ public class AutoNick extends JavaPlugin implements Listener {
 		ItemStack stack = new ItemStack(Material.NAME_TAG);
 		ItemMeta im = stack.getItemMeta();
 		im.setDisplayName("§6AutoNick " + booleanToString(autoNick));
+		stack.setItemMeta(im);
+		return stack;
+	}
+	
+	private ItemStack getAutoNickItem(String name) {
+		ItemStack stack = new ItemStack(Material.NAME_TAG);
+		ItemMeta im = stack.getItemMeta();
+		im.setDisplayName("§6AutoNick: " + "§a" + name);
 		stack.setItemMeta(im);
 		return stack;
 	}
