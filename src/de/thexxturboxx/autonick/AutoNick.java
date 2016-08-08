@@ -125,15 +125,16 @@ public class AutoNick extends JavaPlugin implements Listener {
 	@EventHandler
 	public void nickSwitch(PlayerInteractEvent e) {
 		if(e.getAction() == Action.RIGHT_CLICK_AIR || e.getAction() == Action.RIGHT_CLICK_BLOCK) {
-			Statement s;
 			try {
-				s = c.createStatement();
+				Statement s = c.createStatement();
 				if(e.getPlayer().getItemInHand().isSimilar(getAutoNickItem(true))) {
 					e.getPlayer().getInventory().setItem(8, getAutoNickItem(false));
 					s.executeUpdate("UPDATE " + TABLE + " SET nicked = '0' WHERE UUID = '" + e.getPlayer().getName() + "'");
+					e.getPlayer().sendMessage("§7[§5NICK§7] §4AutoNick wurde §cdeaktiviert");
 				} else if(e.getPlayer().getItemInHand().isSimilar(getAutoNickItem(false))) {
 					e.getPlayer().getInventory().setItem(8, getAutoNickItem(true));
 					s.executeUpdate("UPDATE " + TABLE + " SET nicked = '1' WHERE UUID = '" + e.getPlayer().getName() + "'");
+					e.getPlayer().sendMessage("§7[§5NICK§7] §4AutoNick wurde §aaktiviert");
 				}
 			} catch (SQLException e1) {
 				e1.printStackTrace();
