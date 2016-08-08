@@ -2,4 +2,3 @@ name: AutoNick
 main: de.thexxturboxx.autonick.AutoNick
 version: 1.0.0
 author: ThexXTURBOXx
-depend: [Nick]
