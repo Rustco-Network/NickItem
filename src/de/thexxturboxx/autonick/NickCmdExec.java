@@ -26,8 +26,8 @@ public class NickCmdExec implements CommandExecutor {
 			if(p.hasPermission("nick.cmd.nick")) {
 				if(args.length == 1) {
 					try {
-						s.executeUpdate("UPDATE " + AutoNick.TABLE + " SET nicked = '2' WHERE UUID = '" + p.getName() + "'");
-						s.executeUpdate("UPDATE " + AutoNick.TABLE + " SET name = '" + args[0] + "' WHERE UUID = '" + p.getName() + "'");
+						s.executeUpdate("UPDATE " + AutoNick.TABLE + " SET nicked = '2' WHERE UUID = '" + p.getUniqueId().toString() + "'");
+						s.executeUpdate("UPDATE " + AutoNick.TABLE + " SET name = '" + args[0] + "' WHERE UUID = '" + p.getUniqueId().toString() + "'");
 						p.sendMessage(AutoNick.getPrefix() + ChatColor.DARK_RED + "Du wirst als " + ChatColor.GOLD + args[0] + ChatColor.DARK_RED + " spielen!");
 					} catch (SQLException e) {
 						e.printStackTrace();

@@ -6,7 +6,6 @@ import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
-import java.util.Collection;
 
 import org.bukkit.BanList.Type;
 import org.bukkit.Bukkit;
@@ -75,17 +74,16 @@ public class AutoNick extends JavaPlugin implements Listener {
 			getServer().getPluginManager().registerEvents(this, this);
 			getServer().getScheduler().scheduleSyncRepeatingTask(this, new Runnable() {
 				public void run() {
-					Collection<? extends Player> pc = getServer().getOnlinePlayers();
-					for(Player p : pc) {
+					for(Player p : getServer().getOnlinePlayers()) {
 						if(p.hasPermission("nick.cmd.nick")) {
 							try {
 								Statement s = c.createStatement();
-								ResultSet res = s.executeQuery("SELECT * FROM " + TABLE + " WHERE UUID = '" + p.getName() + "';");
+								ResultSet res = s.executeQuery("SELECT * FROM " + TABLE + " WHERE UUID = '" + p.getUniqueId().toString() + "';");
 								int nicked = 0;
 								if(res.next())
 									nicked = res.getInt("nicked");
 								else
-									s.executeUpdate("INSERT INTO " + TABLE + " (UUID, nicked, name) VALUES ('" + p.getName() + "','0','');");
+									s.executeUpdate("INSERT INTO " + TABLE + " (UUID, nicked, name) VALUES ('" + p.getUniqueId().toString() + "','0','');");
 								if(nicked == 2) {
 									String name = res.getString("name");
 									p.getInventory().setItem(8, getAutoNickItem(name));
@@ -147,7 +145,7 @@ public class AutoNick extends JavaPlugin implements Listener {
 		if(e.getAction() == Action.RIGHT_CLICK_AIR || e.getAction() == Action.RIGHT_CLICK_BLOCK) {
 			try {
 				Statement s = c.createStatement();
-				ResultSet res = s.executeQuery("SELECT * FROM " + TABLE + " WHERE UUID = '" + e.getPlayer().getName() + "';");
+				ResultSet res = s.executeQuery("SELECT * FROM " + TABLE + " WHERE UUID = '" + e.getPlayer().getUniqueId().toString() + "';");
 				String name = null;
 				if(res.next()) {
 					name = res.getString("name");
@@ -155,11 +153,11 @@ public class AutoNick extends JavaPlugin implements Listener {
 				if(e.getPlayer().getItemInHand().isSimilar(getAutoNickItem(true)) ||
 						(name != null && e.getPlayer().getItemInHand().isSimilar(getAutoNickItem(name)))) {
 					e.getPlayer().getInventory().setItem(8, getAutoNickItem(false));
-					s.executeUpdate("UPDATE " + TABLE + " SET nicked = '0' WHERE UUID = '" + e.getPlayer().getName() + "'");
+					s.executeUpdate("UPDATE " + TABLE + " SET nicked = '0' WHERE UUID = '" + e.getPlayer().getUniqueId().toString() + "'");
 					e.getPlayer().sendMessage(getPrefix() + "§4AutoNick wurde §cdeaktiviert");
 				} else if(e.getPlayer().getItemInHand().isSimilar(getAutoNickItem(false))) {
 					e.getPlayer().getInventory().setItem(8, getAutoNickItem(true));
-					s.executeUpdate("UPDATE " + TABLE + " SET nicked = '1' WHERE UUID = '" + e.getPlayer().getName() + "'");
+					s.executeUpdate("UPDATE " + TABLE + " SET nicked = '1' WHERE UUID = '" + e.getPlayer().getUniqueId().toString() + "'");
 					e.getPlayer().sendMessage(getPrefix() + "§4AutoNick wurde §aaktiviert");
 				}
 			} catch (SQLException e1) {
